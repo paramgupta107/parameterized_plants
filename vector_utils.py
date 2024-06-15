@@ -26,10 +26,10 @@ def normalize_vectors(vectors: torch.Tensor) -> torch.Tensor:
     Normalize the given vectors.
 
     Args:
-        vectors (torch.Tensor): The vectors to normalize of shape (num_vectors, 3).
+        vectors (torch.Tensor): The vectors to normalize of shape (... , 3).
 
     Returns:
-        torch.Tensor: The normalized vectors of shape (num_vectors, 3).
+        torch.Tensor: The normalized vectors of shape (... , 3).
     """
-    return vectors / torch.norm(vectors, dim=1, keepdim=True)
+    return vectors / torch.norm(vectors, dim=-1, keepdim=True)
 

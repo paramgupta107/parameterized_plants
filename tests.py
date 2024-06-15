@@ -201,6 +201,11 @@ class TestNormalizeVectors(unittest.TestCase):
         expected_result = torch.tensor([[0.26726124, 0.53452248, 0.80178373], [0.45584231, 0.56980288, 0.68376346], [0.50257071, 0.57436653, 0.64616235]]) 
         result = normalize_vectors(vectors) 
         self.assertTrue(torch.allclose(result, expected_result))
+    def test_nomralize_vecors_high_dem(self):
+        vectors = torch.tensor([[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], [[7.0, 8.0, 9.0], [7.0, 8.0, 9.0]]]) 
+        expected_result = torch.tensor([[[0.26726124, 0.53452248, 0.80178373], [0.45584231, 0.56980288, 0.68376346]], [[0.50257071, 0.57436653, 0.64616235], [0.50257071, 0.57436653, 0.64616235]]])
+        result = normalize_vectors(vectors)
+        self.assertTrue(torch.allclose(result, expected_result))
 
 if __name__ == '__main__':
     unittest.main()
