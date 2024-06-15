@@ -75,3 +75,26 @@ def sample_cubic_bezier_surfaces_points(patches: torch.Tensor, num_points_per_di
     patches = patches.transpose(1, 2).view(-1, 3, 4, 4)
     points = U.matmul(B).matmul(patches).matmul(B).matmul(V.transpose(0, 1)).view(patches.shape[0], 3, -1).transpose(1, 2)
     return points
+
+def sample_cubic_bezier_curve_points(control_points: torch.Tensor, num_points: int, device: str = 'cuda') -> torch.Tensor:
+    """
+    Sample points from a cubic Bezier curve defined by the given control points.
+
+    Args:
+        control_points (torch.Tensor): The control points of the Bezier curve of shape (num_curves, 4, 3).
+        num_points (int): The number of points to sample.
+        device (str, optional): The device to use for computation. Defaults to 'cuda'.
+    Returns:
+        torch.Tensor: The sampled points from the Bezier curve of shape (num_curves, num_points, 3).
+    """
+    control_points = control_points.to(device)
+    B = torch.tensor([
+        [-1.0, 3.0, -3.0, 1.0],
+        [3.0, -6.0, 3.0, 0.0],
+        [-3.0, 3.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0, 0.0]
+    ]).to(device)
+    t = torch.linspace(0.0, 1.0, num_points).to(device)
+    T = torch.stack([t**3, t**2, t, torch.ones_like(t)], dim=1)
+    points = T.matmul(B).matmul(control_points)
+    return points

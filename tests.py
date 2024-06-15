@@ -11,7 +11,7 @@ from surface_ops import write_tensor_product_bv
 from surface_ops import sample_cubic_bezier_surfaces_points
 from vector_utils import normalize_vectors
 from vector_utils import rotate_vectors
-
+from surface_ops import sample_cubic_bezier_curve_points
 class SaveMeshTests(unittest.TestCase):
     def test_save_mesh(self):
         # Define test input
@@ -176,6 +176,13 @@ class SampleCubicBeizerSurfacerTestCase(unittest.TestCase):
         num_points_per_dim = 10
         points = sample_cubic_bezier_surfaces_points(patches, num_points_per_dim, device='cpu')
         self.assertEqual(points.shape, (2, num_points_per_dim*num_points_per_dim, 3))
+
+class SampleCubicBezierCurvePointsTestCase(unittest.TestCase):
+    def test_sample_points(self):
+        control_points = torch.rand(2, 4, 3)
+        num_points = 10
+        points = sample_cubic_bezier_curve_points(control_points, num_points, device='cpu')
+        self.assertEqual(points.shape, (2, num_points, 3))
 
 class TestRotateVectors(unittest.TestCase):
     def test_rotate_vectors(self):
