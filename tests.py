@@ -12,6 +12,10 @@ from surface_ops import sample_cubic_bezier_surfaces_points
 from vector_utils import normalize_vectors
 from vector_utils import rotate_vectors
 from surface_ops import sample_cubic_bezier_curve_points
+from surface_ops import sample_quadratic_bezier_curve_points
+from surface_ops import sample_linear_bezier_curve_points
+from mesh_ops import polylines_edges
+from surface_ops import cubic_curve_segments_control_points
 class SaveMeshTests(unittest.TestCase):
     def test_save_mesh(self):
         # Define test input
@@ -67,8 +71,33 @@ class SaveMeshTests(unittest.TestCase):
 
         # Clean up the test file
         os.remove(filename)
+    def test_save_mesh_edges(self):
+        # Define test input
+        vertices = torch.Tensor([
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0]
+        ])
+        faces = torch.Tensor([
+            [0, 1], [1, 2]
+        ]).long()
+        filename = "out/test.obj"
 
+        # Call the function
+        save_mesh(vertices, faces, filename)
 
+        # Read the saved file
+        with open(filename, 'r') as file:
+            saved_content = file.read()
+
+        # Define the expected output
+        expected_content = "v 0.0 0.0 0.0\nv 1.0 0.0 0.0\nv 0.0 1.0 0.0\nl 1 2\nl 2 3\n"
+
+        # Assert the saved content matches the expected output
+        self.assertEqual(saved_content, expected_content)
+
+        # Clean up the test file
+        os.remove(filename)
 class VerticesFacesToPatchesTestCase(unittest.TestCase):
     def test_vertices_faces_to_patches(self):
         vertices = torch.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
@@ -184,6 +213,19 @@ class SampleCubicBezierCurvePointsTestCase(unittest.TestCase):
         points = sample_cubic_bezier_curve_points(control_points, num_points, device='cpu')
         self.assertEqual(points.shape, (2, num_points, 3))
 
+class SampleQuadraticBezierCurvePointsTestCase(unittest.TestCase):
+    def test_sample_points(self):
+        control_points = torch.rand(2, 3, 3)
+        num_points = 10
+        points = sample_quadratic_bezier_curve_points(control_points, num_points, device='cpu')
+        self.assertEqual(points.shape, (2, num_points, 3))
+
+class SampleLinearBezierCurvePointsTestCase(unittest.TestCase):
+    def test_sample_points(self):
+        control_points = torch.rand(2, 2, 3)
+        num_points = 10
+        points = sample_linear_bezier_curve_points(control_points, num_points, device='cpu')
+        self.assertEqual(points.shape, (2, num_points, 3))
 class TestRotateVectors(unittest.TestCase):
     def test_rotate_vectors(self):
         vectors = torch.tensor([[0.8, 2.93, 1.53], [0.0, 1.0, 0.0], [1.0, 1.0, 5.0]])
@@ -207,5 +249,21 @@ class TestNormalizeVectors(unittest.TestCase):
         result = normalize_vectors(vectors)
         self.assertTrue(torch.allclose(result, expected_result))
 
+class TestPolylineEdges(unittest.TestCase):
+    def test_polyline_edges(self):
+        numSegs = 4
+        expected_result = torch.tensor([[0, 1], [1, 2], [2, 3]])
+        result = polylines_edges(numSegs, device='cpu')
+        self.assertTrue(torch.allclose(result, expected_result))
+        self.assertEqual(result.shape, expected_result.shape)
+        self.assertTrue(result.dtype == expected_result.dtype)
+
+class TestCubicCurveSegments(unittest.TestCase):
+    def test_cubic_curve_segments_control_points(self):
+        handles = torch.tensor([[[0.0, 0.0, 0.0], [2.0, 2.0, 2.0]], [[3.0, 3.0, 3.0], [5.0, 5.0, 5.0]]])
+        expected = torch.tensor([[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0], [4.0, 4.0, 4.0]]])
+        result = cubic_curve_segments_control_points(handles, device='cpu')
+        self.assertEqual(result.shape, (1, 4, 3))
+        self.assertTrue(torch.allclose(result, expected))
 if __name__ == '__main__':
     unittest.main()

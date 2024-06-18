@@ -10,7 +10,7 @@ def save_mesh(vertices: torch.Tensor, faces: torch.LongTensor, filename: str):
 
     Args:
         vertices (torch.Tensor): vertex coordinates of shape (num_vertices, 3) or (1, num_vertices, 3).
-        faces (torch.LongTensor): face indices of shape (num_faces, 3).
+        faces (torch.LongTensor): face indices of shape (num_faces, polygon_size >= 2).
         filename (str): Name of the output OBJ file.
 
     Returns:
@@ -21,11 +21,12 @@ def save_mesh(vertices: torch.Tensor, faces: torch.LongTensor, filename: str):
     directory = os.path.dirname(filename)
     if directory and not os.path.exists(directory):
         os.makedirs(directory)
+    ch = "f " if faces.shape[1] >= 3 else "l "
     with open(filename, 'w') as file:
         for vertex in vertices:
            file.write("v " + " ".join([str(x.item()) for x in vertex]) + "\n")
         for face in faces:
-            file.write("f " + " ".join([str(x.item()+1) for x in face]) + "\n")
+            file.write(ch + " ".join([str(x.item()+1) for x in face]) + "\n")
 
 def save_point_cloud_to_ply(point_cloud: torch.Tensor, filename: str):
     """
@@ -205,3 +206,16 @@ def fit_mesh(targetMeshVertices: torch.Tensor, targetMeshFaces: torch.LongTensor
             )
     print("Optimization finished.")
     return startingVertices, startingFaces
+
+def polylines_edges(num_segs: int, device: str = 'cuda') -> torch.LongTensor:
+    """
+    Generate edges for a polyline.
+
+    Args:
+        num_segs (int): The number of segments in the polyline.
+
+    Returns:
+        torch.LongTensor: The edges of the polyline.
+    """
+    ar = torch.arange(num_segs, device=device)
+    return torch.stack([ar[:-1], ar[1:]], dim=1)
