@@ -118,7 +118,7 @@ def sample_quadratic_bezier_curve_points(control_points: torch.Tensor, num_point
         [1.0, 0.0, 0.0]
     ]).to(device)
     t = torch.linspace(0.0, 1.0, num_points).to(device)
-    T = torch.stack([t**2, t, torch.ones_like(t)], dim=1)
+    T = torch.stack([t**2, t, torch.ones_like(t)], dim=1) # (num_points, 3)
     points = T.matmul(B).matmul(control_points)
     return points
 
@@ -190,7 +190,7 @@ def cylinderical_cubic_spline_faces(num_segs: int, points_per_circle: int, train
         device (str, optional): The device to use for computation. Defaults to 'cuda'.
 
     Returns:
-        torch.LongTensor: The faces of the cylindrical cubic spline of shape (num_curves * num_segs * points_per_circle, 3).
+        torch.LongTensor: The faces of the cylindrical cubic spline of shape (num_segs * points_per_circle, 3).
     """
     i0 = torch.arange(points_per_circle, device=device)
     i1 = i0 + points_per_circle
@@ -206,7 +206,7 @@ def cylinderical_cubic_spline_faces(num_segs: int, points_per_circle: int, train
     faces = (seg + f * points_per_circle).view(-1, 3 if traingulated else 4)
     return faces
     
-def cubic_curve_segments_control_points(handles: torch.Tensor, device: str = 'cuda') -> torch.Tensor:
+def cubic_c1_curve_segments_control_points(handles: torch.Tensor, device: str = 'cuda') -> torch.Tensor:
     """
     Compute the control points of the cubic Bezier curve segments from the given handles.
 
@@ -258,4 +258,47 @@ def cubic_bezier_arclength(control_points: torch.Tensor, num_points: int, device
     control_points_diff = control_points[:, 1:] - control_points[:, :-1]
     tangent_vectors = 3 * sample_quadratic_bezier_curve_points(control_points_diff, num_points, device)
     dists = torch.norm(tangent_vectors, dim=-1)
-    return torch.sum(dists, dim=-1)
+    return torch.sum(dists, dim=-1)\
+
+def cylinderical_cubic_spline_faces_seperated(num_segs: int, num_curves: int, points_per_circle: int, traingulated: bool = True, device: str = 'cuda'):
+    """
+    Create faces for a cylindrical cubic spline for vertrices generated using cylinderical_cubic_spline_vertices.
+
+    Args:
+        num_segs (int): The number of segments.
+        num_curves (int): The number of curves.
+        points_per_circle (int): The number of points per circle.
+        traingulated (bool, optional): Whether to triangulate the faces. Defaults to True.
+        device (str, optional): The device to use for computation. Defaults to 'cuda'.
+
+    Returns:
+        torch.LongTensor: The faces of the cylindrical cubic spline of shape (num_curves * num_segs * points_per_circle, 3).
+    """
+    i0 = torch.arange(points_per_circle, device=device)
+    i1 = i0 + points_per_circle
+    i2 = (i0 + 1) % points_per_circle + points_per_circle
+    i3 = (i0 + 1) % points_per_circle
+    if not traingulated:
+        seg =  torch.stack([i0, i1, i2, i3], dim=1)
+    else:
+        tri1 = torch.stack([i0, i1, i2], dim=1)
+        tri2 = torch.stack([i0, i2, i3], dim=1)
+        seg = torch.cat([tri1, tri2], dim=0)
+    f = torch.arange(num_segs-1, device=device).view(-1, 1, 1)
+    faces = (seg + f * points_per_circle).view(-1, 3 if traingulated else 4)
+    c = torch.arange(num_curves, device=device).view(1, -1, 1, 1)
+    return (faces + c * num_segs * points_per_circle).reshape(-1, 3 if traingulated else 4)
+
+def cubic_c0_curve_segments_control_points(points: torch.Tensor, device: str = 'cuda') -> torch.Tensor:
+    """
+    Compute the control points of a c0 cubic Bezier curve segments from the given points.
+
+    Args:
+        points (torch.Tensor): The points of the cubic Bezier curve segments of shape (3*num_curves + 1, 3).
+        device (str, optional): The device to use for computation. Defaults to 'cuda'.
+
+    Returns:
+        torch.Tensor: The control points of the cubic Bezier curve segments of shape (num_curves, 4, 3).
+    """
+    control_points = points.unfold(0, 4, 3).transpose(1,2)
+    return control_points

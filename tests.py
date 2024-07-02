@@ -15,7 +15,8 @@ from surface_ops import sample_cubic_bezier_curve_points
 from surface_ops import sample_quadratic_bezier_curve_points
 from surface_ops import sample_linear_bezier_curve_points
 from mesh_ops import polylines_edges
-from surface_ops import cubic_curve_segments_control_points
+from surface_ops import cubic_c1_curve_segments_control_points
+from surface_ops import cubic_c0_curve_segments_control_points
 class SaveMeshTests(unittest.TestCase):
     def test_save_mesh(self):
         # Define test input
@@ -262,8 +263,16 @@ class TestCubicCurveSegments(unittest.TestCase):
     def test_cubic_curve_segments_control_points(self):
         handles = torch.tensor([[[0.0, 0.0, 0.0], [2.0, 2.0, 2.0]], [[3.0, 3.0, 3.0], [5.0, 5.0, 5.0]]])
         expected = torch.tensor([[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0], [4.0, 4.0, 4.0]]])
-        result = cubic_curve_segments_control_points(handles, device='cpu')
+        result = cubic_c1_curve_segments_control_points(handles, device='cpu')
         self.assertEqual(result.shape, (1, 4, 3))
+        self.assertTrue(torch.allclose(result, expected))
+
+class TestCubicC0CurveSegments(unittest.TestCase):
+    def test_cubic_c0_curve_segments_control_points(self):
+        points = torch.Tensor([[1,1,1], [2,2,2], [3,3,3], [4,4,4], [5,5,5], [6,6,6], [7,7,7]])
+        expected = torch.Tensor([[[1., 1., 1.], [2., 2., 2.], [3., 3., 3.], [4., 4., 4.]], [[4., 4., 4.], [5., 5., 5.], [6., 6., 6.], [7., 7., 7.]]])
+        result = cubic_c0_curve_segments_control_points(points, device = 'cpu')
+        self.assertEqual(result.shape, expected.shape)
         self.assertTrue(torch.allclose(result, expected))
 if __name__ == '__main__':
     unittest.main()
