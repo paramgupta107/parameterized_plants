@@ -17,6 +17,8 @@ from surface_ops import sample_linear_bezier_curve_points
 from mesh_ops import polylines_edges
 from surface_ops import cubic_c1_curve_segments_control_points
 from surface_ops import cubic_c0_curve_segments_control_points
+from surface_ops import subdivide_c1_cubic_handles
+from surface_ops import subdivide_c0_quadratic_control_points
 class SaveMeshTests(unittest.TestCase):
     def test_save_mesh(self):
         # Define test input
@@ -274,5 +276,43 @@ class TestCubicC0CurveSegments(unittest.TestCase):
         result = cubic_c0_curve_segments_control_points(points, device = 'cpu')
         self.assertEqual(result.shape, expected.shape)
         self.assertTrue(torch.allclose(result, expected))
+
+class TestSubdivideC1CubicHandles(unittest.TestCase):
+    def test_subdivide_c1_cubic_handles(self):
+        handles = torch.tensor([[[1,1,1],[2,2,2]], [[3,3,3],[4,4,4]]])
+        subdivided_handles = subdivide_c1_cubic_handles(handles, device='cpu')
+        expected = torch.tensor([[[1.2500, 1.2500, 1.2500],
+         [1.7500, 1.7500, 1.7500]],
+
+        [[2.1250, 2.1250, 2.1250],
+         [2.8750, 2.8750, 2.8750]],
+
+        [[3.2500, 3.2500, 3.2500],
+         [3.7500, 3.7500, 3.7500]]])
+        self.assertTrue(torch.allclose(subdivided_handles, expected))
+        self.assertEqual(subdivided_handles.shape, expected.shape)
+
+class TestSubdivideC0ControlPoints(unittest.TestCase):
+    def test_subdivide_c0_quadratic_control_points(self):
+        control_points = torch.tensor([[[1,1,1],[2,2,2],[3,3,3]], [[4,4,4],[5,5,5],[6,6,6]]])
+        subdivided_control_points = subdivide_c0_quadratic_control_points(control_points, device='cpu')
+        expected = torch.tensor([[[1.0000, 1.0000, 1.0000],
+         [1.5000, 1.5000, 1.5000],
+         [2.0000, 2.0000, 2.0000]],
+
+        [[2.0000, 2.0000, 2.0000],
+         [2.5000, 2.5000, 2.5000],
+         [3.0000, 3.0000, 3.0000]],
+
+        [[4.0000, 4.0000, 4.0000],
+         [4.5000, 4.5000, 4.5000],
+         [5.0000, 5.0000, 5.0000]],
+
+        [[5.0000, 5.0000, 5.0000],
+         [5.5000, 5.5000, 5.5000],
+         [6.0000, 6.0000, 6.0000]]])
+        self.assertTrue(torch.allclose(subdivided_control_points, expected))
+        self.assertEqual(subdivided_control_points.shape, expected.shape)
+
 if __name__ == '__main__':
     unittest.main()

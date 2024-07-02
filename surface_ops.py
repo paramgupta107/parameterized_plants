@@ -302,3 +302,77 @@ def cubic_c0_curve_segments_control_points(points: torch.Tensor, device: str = '
     """
     control_points = points.unfold(0, 4, 3).transpose(1,2)
     return control_points
+
+def subdivide_c1_cubic_handles(handles: torch.Tensor, device: str = 'cuda'):
+    """
+    Subdived the given cubic Bezier curve handles.
+
+    Args:
+        handles (torch.Tensor): The handles of the cubic Bezier curve of shape (num_curves+1, 2, 3).
+        device (str, optional): The device to use for computation. Defaults to 'cuda'.
+
+    Returns:
+        torch.Tensor: The subdivided handles of the cubic Bezier curve of shape (2*num_curves+1, 2, 3).
+    """
+    num_curves = handles.shape[0] - 1
+    left_handles = handles[:-1] # (num_curves, 2, 3)
+    right_handles = handles[1:] # (num_curves, 2, 3)
+
+    h0 = left_handles[:, 0] # (num_curves, 3)
+    h1 = left_handles[:, 1] # (num_curves, 3)
+    h2 = right_handles[:, 0] # (num_curves, 3)
+    h3 = right_handles[:, 1] # (num_curves, 3)
+
+    new_h0 = (3*h0 + h1) / 4
+    new_h1 = (h0 + 3*h1) / 4
+    new_h2 = (h0 + 5*h1 + 2*h2) / 8
+    new_h3 = (2*h1 + 5*h2 + h3) / 8
+
+    new_left_handles = torch.stack([new_h0, new_h1], dim=1)
+    new_right_handles = torch.stack([new_h2, new_h3], dim=1)
+
+    new_handles = torch.stack([new_left_handles, new_right_handles], dim=1).reshape(2*num_curves, 2, -1)
+
+    # Add the last handle
+    h0 = handles[-1, 0]
+    h1 = handles[-1, 1]
+
+    new_h0 = (3*h0 + h1) / 4
+    new_h1 = (h0 + 3*h1) / 4
+
+    last_handle = torch.stack([new_h0, new_h1], dim=0).unsqueeze(0)
+    new_handles = torch.cat([new_handles, last_handle], dim=0)
+
+    return new_handles
+
+def subdivide_c0_quadratic_control_points(control_points: torch.Tensor, device: str = 'cuda'):
+    """
+    Subdivide the given quadratic Bezier curve control points.
+
+    Args:
+        control_points (torch.Tensor): The control points of the quadratic Bezier curve of shape (num_curves, 3, 3).
+        device (str, optional): The device to use for computation. Defaults to 'cuda'.
+
+    Returns:
+        torch.Tensor: The subdivided control points of the quadratic Bezier curve of shape (2*num_curves, 3, 3).
+    """
+    num_curves = control_points.shape[0]
+    p0 = control_points[:, 0]
+    p1 = control_points[:, 1]
+    p2 = control_points[:, 2]
+
+    new_p0 = p0
+    new_p1 = (p0 + p1) / 2
+    new_p2 = (p0 + 2*p1 + p2) / 4
+
+    new_p0_2 = new_p2
+    new_p1_2 = (p1 + p2) / 2
+    new_p2_2 = p2
+
+    new_control_points = torch.stack([new_p0, new_p1, new_p2], dim=1)
+    new_control_points_2 = torch.stack([new_p0_2, new_p1_2, new_p2_2], dim=1)
+
+    new_control_points = torch.stack([new_control_points, new_control_points_2], dim=1).reshape(2*num_curves, 3, -1)
+
+    return new_control_points
+
