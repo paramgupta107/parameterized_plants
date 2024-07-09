@@ -1,3 +1,4 @@
+import argparse
 from surface_ops import cubic_bezier_arclength, cylinderical_cubic_spline_faces_seperated, cylinderical_cubic_spline_vertices, cylinderical_cubic_spline_faces, sample_cubic_bezier_curve_points, cubic_c1_curve_segments_control_points, cubic_bezier_curve_curvature, sample_quadratic_bezier_curve_points, cubic_c0_curve_segments_control_points, subdivide_c0_quadratic_control_points, subdivide_c1_cubic_handles
 from mesh_ops import load_mesh, polylines_edges, save_mesh
 import torch
@@ -227,7 +228,7 @@ def fit_cubic_c1_bezier_cylinder_subidvided_segs(targetMeshVertices: torch.Tenso
         if epoch == 500:
             optimizer = torch.optim.Adam([transform, translate, handles, thickness], lr=lr/100)
             print("------------------Optimizing thickness.------------------")
-        if epoch > 500 and (epoch % 500 == 0) and numSubdivisions < 5:
+        if epoch > 500 and (epoch % 500 == 0) and numSubdivisions < 3:
             handles = subdivide_c1_cubic_handles(handles, device=device).detach().requires_grad_(True)
             # thickness_control_points = subdivide_c0_quadratic_control_points(thickness, device=device).detach().requires_grad_(True)
             thickness = subdivide_thickness(thickness, device=device).detach().requires_grad_(True)
@@ -299,9 +300,9 @@ def main_cubic_c1_curve_segs():
     curvePoints = sample_cubic_bezier_curve_points(control_points, num_segs, device=device).reshape(-1, 3)
     save_mesh(curvePoints, curveEdges, "out/cylinder_curve_seg_h.obj")
 
-def main_cubic_c1_curve_subdiv_segs():
+def main_cubic_c1_curve_subdiv_segs(file_path: str) -> None:
     device = 'cuda'
-    num_segs, points_per_circle = 50, 25
+    num_segs, points_per_circle = 20, 25
     num_handles = 2
     # handles = torch.tensor([[[10.0, -30.0, 0.0], [-10.0, 30.0, 0.0]], [[0,60,0], [40,140,0]], [[-5,15,0], [5,25,0]]], device=device, requires_grad=True)
     # handles = torch.tensor([[[-5, -5.0, 0.0], [5.0, 5.0, 0.0]], [[10,10,0], [15,15,0]], [[20,20,0], [25,25,0]], [[30, 30, 0], [35,35,0]], [[40, 40, 0], [45, 45, 0]]], device=device, requires_grad=True)
@@ -311,11 +312,14 @@ def main_cubic_c1_curve_subdiv_segs():
     num_curves = handles.shape[0] - 1
     thickness = torch.ones(num_curves, num_segs, 1, device=device, requires_grad=True)
     # thickness_control_points = torch.ones(num_curves, 3, 1, device=device, requires_grad=True)
-    targetVerts, targetFaces = load_mesh('models/stem_nh.obj')
+    targetVerts, targetFaces = load_mesh(file_path)
     handles, thickness = fit_cubic_c1_bezier_cylinder_subidvided_segs(targetVerts, targetFaces, handles, thickness, num_segs, points_per_circle, lr=0.1, epochs=6000, device='cuda')
-    graph_data = thickness.reshape(-1, 1).cpu().detach().numpy()
+    graph_data = torch.sigmoid(thickness).reshape(-1, 1).cpu().detach().numpy()
     plt.plot(graph_data)
-    plt.show()
+    plt.xlabel("Stem Length")
+    plt.ylabel("Diameter")
+    plt.title("Stem Thickness")
+    plt.savefig('out/thickness_graph.png')
 
     num_curves = handles.shape[0] - 1
 
@@ -323,10 +327,10 @@ def main_cubic_c1_curve_subdiv_segs():
     # thickness = sample_quadratic_bezier_curve_points(thickness_control_points, num_segs, device=device)
     fit_verts = cylinderical_cubic_spline_vertices(control_points, thickness, num_segs, points_per_circle, device=device).reshape(-1, 3)
     faces = cylinderical_cubic_spline_faces_seperated(num_segs, num_curves, points_per_circle, traingulated=False, device=device).reshape(-1, 4)
-    save_mesh(fit_verts, faces, "out/cylinder_seg_h.obj")
+    save_mesh(fit_verts, faces, "out/fitted_stem.obj")
     curveEdges = polylines_edges(num_segs*num_curves, device=device)
     curvePoints = sample_cubic_bezier_curve_points(control_points, num_segs, device=device).reshape(-1, 3)
-    save_mesh(curvePoints, curveEdges, "out/cylinder_curve_seg_h.obj")
+    save_mesh(curvePoints, curveEdges, "out/fitted_stem_curve.obj")
 
 def main_cubic_c0_curve_segs():
     device = 'cuda'
@@ -348,6 +352,23 @@ def main_cubic_c0_curve_segs():
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Fit to a stem obj file")
+    
+    # Add the file path argument
+    parser.add_argument(
+        'file_path', 
+        nargs='?', 
+        type=str, 
+        default='models/sugarcane.obj', 
+        help="Path to the OBJ file"
+    )
+    
+    # Parse the arguments
+    args = parser.parse_args()
+
+    # Get the file path
+    file_path = args.file_path
+
     # main_cubic_curve()
-    main_cubic_c1_curve_subdiv_segs()
+    main_cubic_c1_curve_subdiv_segs(file_path)
     # main_cubic_c0_curve_segs()
