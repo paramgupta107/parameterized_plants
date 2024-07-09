@@ -19,6 +19,7 @@ from surface_ops import cubic_c1_curve_segments_control_points
 from surface_ops import cubic_c0_curve_segments_control_points
 from surface_ops import subdivide_c1_cubic_handles
 from surface_ops import subdivide_c0_quadratic_control_points
+from surface_ops import cubic_bezier_curve_curvature
 class SaveMeshTests(unittest.TestCase):
     def test_save_mesh(self):
         # Define test input
@@ -268,6 +269,12 @@ class TestCubicCurveSegments(unittest.TestCase):
         result = cubic_c1_curve_segments_control_points(handles, device='cpu')
         self.assertEqual(result.shape, (1, 4, 3))
         self.assertTrue(torch.allclose(result, expected))
+    def test_cubic_curve_segments_control_points_extra_dim(self):
+        handles = torch.tensor([[[[0.0, 0.0, 0.0], [2.0, 2.0, 2.0]], [[3.0, 3.0, 3.0], [5.0, 5.0, 5.0]]], [[[0.0, 0.0, 0.0], [20.0, 20.0, 20.0]], [[30.0, 30.0, 30.0], [50.0, 50.0, 50.0]]]])
+        expected = torch.tensor([[[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0], [4.0, 4.0, 4.0]]], [[[10.0, 10.0, 10.0], [20.0, 20.0, 20.0], [30.0, 30.0, 30.0], [40.0, 40.0, 40.0]]]])
+        result = cubic_c1_curve_segments_control_points(handles, device='cpu')
+        self.assertEqual(result.shape, expected.shape)
+        self.assertTrue(torch.allclose(result, expected))
 
 class TestCubicC0CurveSegments(unittest.TestCase):
     def test_cubic_c0_curve_segments_control_points(self):
@@ -289,6 +296,28 @@ class TestSubdivideC1CubicHandles(unittest.TestCase):
 
         [[3.2500, 3.2500, 3.2500],
          [3.7500, 3.7500, 3.7500]]])
+        self.assertTrue(torch.allclose(subdivided_handles, expected))
+        self.assertEqual(subdivided_handles.shape, expected.shape)
+    
+    def test_subdivide_c1_cubic_handles_extra_dim(self):
+        handles = torch.tensor([[[[1,1,1],[2,2,2]], [[3,3,3],[4,4,4]]], [[[10,10,10],[20,20,20]], [[30,30,30],[40,40,40]]]])
+        subdivided_handles = subdivide_c1_cubic_handles(handles, device='cpu')
+        expected = torch.tensor([[[[1.2500, 1.2500, 1.2500],
+         [1.7500, 1.7500, 1.7500]],
+
+        [[2.1250, 2.1250, 2.1250],
+         [2.8750, 2.8750, 2.8750]],
+
+        [[3.2500, 3.2500, 3.2500],
+         [3.7500, 3.7500, 3.7500]]],
+         [[[12.500, 12.500, 12.500],
+         [17.500, 17.500, 17.500]],
+
+        [[21.250, 21.250, 21.250],
+         [28.750, 28.750, 28.750]],
+
+        [[32.500, 32.500, 32.500],
+         [37.500, 37.500, 37.500]]]])
         self.assertTrue(torch.allclose(subdivided_handles, expected))
         self.assertEqual(subdivided_handles.shape, expected.shape)
 
@@ -314,5 +343,18 @@ class TestSubdivideC0ControlPoints(unittest.TestCase):
         self.assertTrue(torch.allclose(subdivided_control_points, expected))
         self.assertEqual(subdivided_control_points.shape, expected.shape)
 
+class TestCubicBezierCurvature(unittest.TestCase):
+    def test_cubic_bezier_curve_curvature(self):
+        control_points = torch.tensor([[1.0,1,1],[2,2,2],[3,3,3],[4,4,4]])
+        curvature = cubic_bezier_curve_curvature(control_points, 5, device='cpu')
+        expected = torch.tensor(0.0)
+        self.assertTrue(torch.allclose(curvature, expected))
+        self.assertEqual(curvature.shape, expected.shape)
+    def test_cubic_bezier_curve_curvature_extra_dim(self):
+        control_points = torch.tensor([[[1.0,1,1],[2,2,2],[3,3,3],[4,4,4]], [[10.0,10,10],[20,20,20],[30,30,30],[40,40,40]]])
+        curvature = cubic_bezier_curve_curvature(control_points, 5, device='cpu')
+        expected = torch.tensor(0.0)
+        self.assertTrue(torch.allclose(curvature, expected))
+        self.assertEqual(curvature.shape, expected.shape)
 if __name__ == '__main__':
     unittest.main()

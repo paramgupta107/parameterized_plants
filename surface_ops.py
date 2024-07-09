@@ -82,11 +82,11 @@ def sample_cubic_bezier_curve_points(control_points: torch.Tensor, num_points: i
     Sample points from a cubic Bezier curve defined by the given control points.
 
     Args:
-        control_points (torch.Tensor): The control points of the Bezier curve of shape (num_curves, 4, 3).
+        control_points (torch.Tensor): The control points of the Bezier curve of shape (..., num_curves, 4, 3).
         num_points (int): The number of points to sample.
         device (str, optional): The device to use for computation. Defaults to 'cuda'.
     Returns:
-        torch.Tensor: The sampled points from the Bezier curve of shape (num_curves, num_points, 3).
+        torch.Tensor: The sampled points from the Bezier curve of shape (..., num_curves, num_points, 3).
     """
     control_points = control_points.to(device)
     B = torch.tensor([
@@ -105,11 +105,11 @@ def sample_quadratic_bezier_curve_points(control_points: torch.Tensor, num_point
     Sample points from a quadratic Bezier curve defined by the given control points.
 
     Args:
-        control_points (torch.Tensor): The control points of the Bezier curve of shape (num_curves, 3, 3).
+        control_points (torch.Tensor): The control points of the Bezier curve of shape (..., num_curves, 3, 3).
         num_points (int): The number of points to sample.
         device (str, optional): The device to use for computation. Defaults to 'cuda'.
     Returns:
-        torch.Tensor: The sampled points from the Bezier curve of shape (num_curves, num_points, 3).
+        torch.Tensor: The sampled points from the Bezier curve of shape (..., num_curves, num_points, 3).
     """
     control_points = control_points.to(device)
     B = torch.tensor([
@@ -127,11 +127,11 @@ def sample_linear_bezier_curve_points(control_points: torch.Tensor, num_points: 
     Sample points from a linear Bezier curve defined by the given control points.
 
     Args:
-        control_points (torch.Tensor): The control points of the Bezier curve of shape (num_curves, 2, 3).
+        control_points (torch.Tensor): The control points of the Bezier curve of shape (..., num_curves, 2, 3).
         num_points (int): The number of points to sample.
         device (str, optional): The device to use for computation. Defaults to 'cuda'.
     Returns:
-        torch.Tensor: The sampled points from the Bezier curve of shape (num_curves, num_points, 3).
+        torch.Tensor: The sampled points from the Bezier curve of shape (..., num_curves, num_points, 3).
     """
     control_points = control_points.to(device)
     B = torch.tensor([
@@ -211,19 +211,19 @@ def cubic_c1_curve_segments_control_points(handles: torch.Tensor, device: str = 
     Compute the control points of the cubic Bezier curve segments from the given handles.
 
     Args:
-        handles (torch.Tensor): The handles of the cubic Bezier curve segments of shape (num_curves+1, 2, 3).
+        handles (torch.Tensor): The handles of the cubic Bezier curve segments of shape (..., num_curves+1, 2, 3).
         device (str, optional): The device to use for computation. Defaults to 'cuda'.
 
     Returns:
-        torch.Tensor: The control points of the cubic Bezier curve segments of shape (num_curves, 4, 3).
+        torch.Tensor: The control points of the cubic Bezier curve segments of shape (..., num_curves, 4, 3).
     """
-    left_handles = handles[:-1] # (num_curves, 2, 3) 
-    right_handles = handles[1:] # (num_curves, 2, 3)
-    p0 = torch.mean(left_handles, dim=1) # (num_curves, 3)
-    p1 = left_handles[:, 1] # (num_curves, 3)
-    p2 = right_handles[:, 0] # (num_curves, 3)
-    p3 = torch.mean(right_handles, dim=1) # (num_curves, 3)
-    control_points = torch.stack([p0, p1, p2, p3], dim=1) # (num_curves, 4, 3)
+    left_handles = handles[..., :-1, :, :] # (num_curves, 2, 3) 
+    right_handles = handles[..., 1:, :, :] # (num_curves, 2, 3)
+    p0 = torch.mean(left_handles, dim=-2) # (num_curves, 3)
+    p1 = left_handles[..., :, 1, :] # (num_curves, 3)
+    p2 = right_handles[..., :, 0, :] # (num_curves, 3)
+    p3 = torch.mean(right_handles, dim=-2) # (num_curves, 3)
+    control_points = torch.stack([p0, p1, p2, p3], dim=-2) # (num_curves, 4, 3)
     return control_points
 
 def cubic_bezier_curve_curvature(control_points: torch.Tensor, num_points: int, device: str = 'cuda') -> torch.Tensor:
@@ -231,15 +231,15 @@ def cubic_bezier_curve_curvature(control_points: torch.Tensor, num_points: int, 
     Compute the total curvature of the cubic Bezier curve defined by the given control points.
 
     Args:
-        control_points (torch.Tensor): The control points of the Bezier curve of shape (num_curves, 4, 3).
+        control_points (torch.Tensor): The control points of the Bezier curve of shape (..., num_curves, 4, 3).
         num_points (int): The number of points to sample for computing the curvature.
         device (str, optional): The device to use for computation. Defaults to 'cuda'.
 
     Returns:
-        torch.Tensor: The total curvature of the cubic Bezier curve of shape (num_curves).
+        torch.Tensor: The absolute maximum curvature of the cubic Bezier curves.
     """
-    control_points_diff = control_points[:, 1:] - control_points[:, :-1]
-    control_points_secod_diff = control_points_diff[:, 1:] - control_points_diff[:, :-1]
+    control_points_diff = control_points[..., 1:, :] - control_points[..., :-1, :]
+    control_points_secod_diff = control_points_diff[..., 1:, :] - control_points_diff[..., :-1, :]
     curvature_vectors = sample_linear_bezier_curve_points(control_points_secod_diff, num_points, device)
     return torch.abs(torch.max(torch.norm(curvature_vectors, dim=-1)))
 
@@ -248,17 +248,17 @@ def cubic_bezier_arclength(control_points: torch.Tensor, num_points: int, device
     Compute the arclength of the cubic Bezier curve defined by the given control points.
 
     Args:
-        control_points (torch.Tensor): The control points of the Bezier curve of shape (num_curves, 4, 3).
+        control_points (torch.Tensor): The control points of the Bezier curve of shape (..., num_curves, 4, 3).
         num_points (int): The number of points to sample for computing the arclength.
         device (str, optional): The device to use for computation. Defaults to 'cuda'.
 
     Returns:
-        torch.Tensor: The arclength of the cubic Bezier curve of shape (num_curves).
+        torch.Tensor: The arclength of the cubic Bezier curve of shape (..., num_curves).
     """
     control_points_diff = control_points[:, 1:] - control_points[:, :-1]
     tangent_vectors = 3 * sample_quadratic_bezier_curve_points(control_points_diff, num_points, device)
     dists = torch.norm(tangent_vectors, dim=-1)
-    return torch.sum(dists, dim=-1)\
+    return torch.sum(dists, dim=-1)
 
 def cylinderical_cubic_spline_faces_seperated(num_segs: int, num_curves: int, points_per_circle: int, traingulated: bool = True, device: str = 'cuda'):
     """
@@ -308,40 +308,41 @@ def subdivide_c1_cubic_handles(handles: torch.Tensor, device: str = 'cuda'):
     Subdived the given cubic Bezier curve handles.
 
     Args:
-        handles (torch.Tensor): The handles of the cubic Bezier curve of shape (num_curves+1, 2, 3).
+        handles (torch.Tensor): The handles of the cubic Bezier curve of shape (..., num_curves+1, 2, 3).
         device (str, optional): The device to use for computation. Defaults to 'cuda'.
 
     Returns:
-        torch.Tensor: The subdivided handles of the cubic Bezier curve of shape (2*num_curves+1, 2, 3).
+        torch.Tensor: The subdivided handles of the cubic Bezier curve of shape (..., 2*num_curves+1, 2, 3).
     """
-    num_curves = handles.shape[0] - 1
-    left_handles = handles[:-1] # (num_curves, 2, 3)
-    right_handles = handles[1:] # (num_curves, 2, 3)
+    extra_dims = handles.shape[:-3]
+    num_curves = handles.shape[-3] - 1
+    left_handles = handles[..., :-1, :, :] # (num_curves, 2, 3)
+    right_handles = handles[..., 1:, :, :] # (num_curves, 2, 3)
 
-    h0 = left_handles[:, 0] # (num_curves, 3)
-    h1 = left_handles[:, 1] # (num_curves, 3)
-    h2 = right_handles[:, 0] # (num_curves, 3)
-    h3 = right_handles[:, 1] # (num_curves, 3)
+    h0 = left_handles[..., 0, :] # (num_curves, 3)
+    h1 = left_handles[..., 1, :] # (num_curves, 3)
+    h2 = right_handles[..., 0, :] # (num_curves, 3)
+    h3 = right_handles[..., 1, :] # (num_curves, 3)
 
     new_h0 = (3*h0 + h1) / 4
     new_h1 = (h0 + 3*h1) / 4
     new_h2 = (h0 + 5*h1 + 2*h2) / 8
     new_h3 = (2*h1 + 5*h2 + h3) / 8
 
-    new_left_handles = torch.stack([new_h0, new_h1], dim=1)
-    new_right_handles = torch.stack([new_h2, new_h3], dim=1)
+    new_left_handles = torch.stack([new_h0, new_h1], dim=-2) # (num_curves, 2, 3)
+    new_right_handles = torch.stack([new_h2, new_h3], dim=-2) # (num_curves, 2, 3)
 
-    new_handles = torch.stack([new_left_handles, new_right_handles], dim=1).reshape(2*num_curves, 2, -1)
+    new_handles = torch.stack([new_left_handles, new_right_handles], dim=-3).reshape(extra_dims + (2*num_curves, 2, -1)) # (2*num_curves, 2, 3)
 
     # Add the last handle
-    h0 = handles[-1, 0]
-    h1 = handles[-1, 1]
+    h0 = handles[..., -1, 0, :] # (3)
+    h1 = handles[..., -1, 1, :] # (3)
 
     new_h0 = (3*h0 + h1) / 4
     new_h1 = (h0 + 3*h1) / 4
 
-    last_handle = torch.stack([new_h0, new_h1], dim=0).unsqueeze(0)
-    new_handles = torch.cat([new_handles, last_handle], dim=0)
+    last_handle = torch.stack([new_h0, new_h1], dim=-2).unsqueeze(-3) # (1, 2, 3)
+    new_handles = torch.cat([new_handles, last_handle], dim=-3) # (2*num_curves+1, 2, 3)
 
     return new_handles
 
