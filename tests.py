@@ -20,6 +20,8 @@ from surface_ops import cubic_c0_curve_segments_control_points
 from surface_ops import subdivide_c1_cubic_handles
 from surface_ops import subdivide_c0_quadratic_control_points
 from surface_ops import cubic_bezier_curve_curvature
+from surface_ops import parallel_curves_surface_faces
+from surface_ops import cubic_bezier_surface_faces
 class SaveMeshTests(unittest.TestCase):
     def test_save_mesh(self):
         # Define test input
@@ -356,5 +358,51 @@ class TestCubicBezierCurvature(unittest.TestCase):
         expected = torch.tensor(0.0)
         self.assertTrue(torch.allclose(curvature, expected))
         self.assertEqual(curvature.shape, expected.shape)
+
+class TestParallelCurvesSurfaceFaces(unittest.TestCase):
+    def test_parallel_curves_surface_faces(self):
+        faces = parallel_curves_surface_faces(5, 3, device='cpu')
+        expected = torch.tensor([[ 0,  5,  6],
+        [ 1,  6,  7],
+        [ 2,  7,  8],
+        [ 3,  8,  9],
+        [ 0,  6,  1],
+        [ 1,  7,  2],
+        [ 2,  8,  3],
+        [ 3,  9,  4],
+        [ 5, 10, 11],
+        [ 6, 11, 12],
+        [ 7, 12, 13],
+        [ 8, 13, 14],
+        [ 5, 11,  6],
+        [ 6, 12,  7],
+        [ 7, 13,  8],
+        [ 8, 14,  9]])
+        self.assertTrue(torch.allclose(faces, expected))
+        self.assertEqual(faces.shape, expected.shape)
+
+class TestCubicBezierSurfaceFaces(unittest.TestCase):
+    def test_cubic_bezier_surface_faces(self):
+        faces = cubic_bezier_surface_faces(4, device='cpu')
+        expected = torch.tensor([[ 0,  4,  5],
+        [ 1,  5,  6],
+        [ 2,  6,  7],
+        [ 0,  5,  1],
+        [ 1,  6,  2],
+        [ 2,  7,  3],
+        [ 4,  8,  9],
+        [ 5,  9, 10],
+        [ 6, 10, 11],
+        [ 4,  9,  5],
+        [ 5, 10,  6],
+        [ 6, 11,  7],
+        [ 8, 12, 13],
+        [ 9, 13, 14],
+        [10, 14, 15],
+        [ 8, 13,  9],
+        [ 9, 14, 10],
+        [10, 15, 11]])
+        self.assertTrue(torch.allclose(faces, expected))
+        self.assertEqual(faces.shape, expected.shape)
 if __name__ == '__main__':
     unittest.main()

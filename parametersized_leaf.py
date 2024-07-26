@@ -33,9 +33,9 @@ def parameterized_leaf(parametes: torch.Tensor, device: str = 'cuda', use_experi
         end_curvWidth = parametes[:, 11].unsqueeze(1)
         xx = parametes[:, 12].unsqueeze(1)
     else:
-        end_width = 0
+        end_width = 0.15
         end_curv = 0
-        end_curvWidth = 0
+        end_curvWidth = 0.5
         xx = 0
     curv_offsetstart = parametes[:, 13].unsqueeze(1)
     curv_offsetend = parametes[:, 14].unsqueeze(1)
@@ -52,10 +52,10 @@ def parameterized_leaf(parametes: torch.Tensor, device: str = 'cuda', use_experi
     top = u * curv_offset * len_ + v * cur
     end = u * len_
 
-    A = torch.zeros_like(top)
-    B = torch.zeros_like(top)
-    C = torch.zeros_like(top)
-    D = torch.zeros_like(top)
+    A = torch.zeros_like(top) - w * width * end_width - u * 0.5 * len_ * (1 - cur_width) * end_curv + v * xx * cur
+    B = torch.zeros_like(top) - w * width * end_width * end_curvWidth
+    C = torch.zeros_like(top) + w * width * end_width * end_curvWidth
+    D = torch.zeros_like(top) + w * width * end_width - u * 0.5 * len_ * (1 - cur_width) * end_curv + v * xx * cur
 
     E = top - w_start * width - u * len_ * cur_width * 0.5 + v * curv_offsetstart
     F = top - w_start * dip_width * width - u * len_ * cur_width * 0.5 - v * cur * dip + v * curv_offsetstart
@@ -70,16 +70,19 @@ def parameterized_leaf(parametes: torch.Tensor, device: str = 'cuda', use_experi
     O = end + w * width * end_width * end_curvWidth
     P = end + w * width * end_width - u * 0.5 * len_ * (1 - cur_width) * end_curv + v * xx * cur
 
-    return torch.stack([A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P], dim=1)
+    return torch.stack([A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P], dim=1).reshape(-1, 16, 3)
 
-def get_target_leaf_params():
+def get_target_leaf_params(device: str = 'cpu'):
     """
     Get the target leaf parameters.
+
+    Args:
+        device (str, optional): The device to use for computation. Defaults to 'cuda'.
 
     Returns:
         torch.Tensor: The target leaf parameters of shape (1, 17).
     """
-    return torch.tensor([[0.97, 1.45, 3.9, 0.66, 0.98, -0.38, 0, 0.55, 0.36, 0, 0, 0, 0, 0.03, -0.56, 0.618407346410207, -0.181592653589793]])
+    return torch.tensor([[0.97, 1.45, 3.9, 0.66, 0.98, -0.38, 0, 0.55, 0.36, 0, 0, 0, 0, 0.03, -0.56, 0.618407346410207, -0.181592653589793]]).to(device)
 
 def get_random_deviation_leaf(magnitude: float, parameters: torch.Tensor, device: str = 'cuda'):
     """
@@ -126,7 +129,7 @@ def clip_parameters(params: torch.Tensor, device = 'cuda'):
         torch.Tensor: The clipped leaf parameters of shape (1, 17)
     """
     minVals =  torch.tensor([[0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, -1, -1, -np.pi/3, -np.pi/3]]).to(device)
-    maxVals =  torch.tensor([[np.pi, np.pi, 5, 2, 1, 1, 1, 1, 1, 0.001, 0.001, 0.001, 0.001, 1, 1, np.pi/3, np.pi/3]]).to(device)
+    maxVals =  torch.tensor([[np.pi, np.pi, 5, 2, 1, 1, 1, 1, 1, 1, 0.001, 1, 0.001, 1, 1, np.pi/3, np.pi/3]]).to(device)
     shift = (params - minVals) / (maxVals - minVals)
     # print("params", params)
     # print("sub", params - minVals)

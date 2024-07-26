@@ -333,7 +333,6 @@ def subdivide_c1_cubic_handles(handles: torch.Tensor, device: str = 'cuda'):
     new_right_handles = torch.stack([new_h2, new_h3], dim=-2) # (num_curves, 2, 3)
 
     new_handles = torch.stack([new_left_handles, new_right_handles], dim=-3).reshape(extra_dims + (2*num_curves, 2, -1)) # (2*num_curves, 2, 3)
-
     # Add the last handle
     h0 = handles[..., -1, 0, :] # (3)
     h1 = handles[..., -1, 1, :] # (3)
@@ -377,3 +376,55 @@ def subdivide_c0_quadratic_control_points(control_points: torch.Tensor, device: 
 
     return new_control_points
 
+def parallel_curves_surface_faces(num_segs: int, num_curves: int, traingulated: bool = True, device: str = 'cuda'):
+    """
+    Create faces for a surface generated using parralel curve segments.
+
+    Args:
+        num_segs (int): The number of segments.
+        num_curves (int): The number of curves.
+        traingulated (bool, optional): Whether to triangulate the faces. Defaults to True.
+        device (str, optional): The device to use for computation. Defaults to 'cuda'.
+
+    Returns:
+        torch.LongTensor: The faces of the cylindrical cubic spline of shape (num_segs * points_per_circle, 3).
+    """
+    i0 = torch.arange(num_segs-1, device=device)
+    i1 = i0 + num_segs
+    i2 = (i0 + 1) + num_segs
+    i3 = (i0 + 1)
+    if not traingulated:
+        seg =  torch.stack([i0, i1, i2, i3], dim=1)
+    else:
+        tri1 = torch.stack([i0, i1, i2], dim=1)
+        tri2 = torch.stack([i0, i2, i3], dim=1)
+        seg = torch.cat([tri1, tri2], dim=0)
+    f = torch.arange(num_curves-1, device=device).view(-1, 1, 1)
+    faces = (seg + f * num_segs).view(-1, 3 if traingulated else 4)
+    return faces
+
+def cubic_bezier_surface_faces(num_segs_per_dim: int, traingulated: bool = True, device: str = 'cuda'):
+    """
+    Create faces for a surface generated using parralel curve segments.
+
+    Args:
+        num_segs_per_dim (int): The number of segments per dimension.
+        traingulated (bool, optional): Whether to triangulate the faces. Defaults to True.
+        device (str, optional): The device to use for computation. Defaults to 'cuda'.
+
+    Returns:
+        torch.LongTensor: The faces of the cylindrical cubic spline of shape (num_segs * points_per_circle, 3).
+    """
+    i0 = torch.arange(num_segs_per_dim-1, device=device)
+    i1 = i0 + num_segs_per_dim
+    i2 = (i0 + 1) + num_segs_per_dim
+    i3 = (i0 + 1)
+    if not traingulated:
+        seg =  torch.stack([i0, i1, i2, i3], dim=1)
+    else:
+        tri1 = torch.stack([i0, i1, i2], dim=1)
+        tri2 = torch.stack([i0, i2, i3], dim=1)
+        seg = torch.cat([tri1, tri2], dim=0)
+    f = torch.arange(num_segs_per_dim-1, device=device).view(-1, 1, 1)
+    faces = (seg + f * num_segs_per_dim).view(-1, 3 if traingulated else 4)
+    return faces
