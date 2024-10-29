@@ -207,15 +207,15 @@ def fit_mesh(targetMeshVertices: torch.Tensor, targetMeshFaces: torch.LongTensor
     print("Optimization finished.")
     return startingVertices, startingFaces
 
-def polylines_edges(num_segs: int, device: str = 'cuda') -> torch.LongTensor:
+def polylines_edges(num_points: int, device: str = 'cuda') -> torch.LongTensor:
     """
     Generate edges for a polyline.
 
     Args:
-        num_segs (int): The number of segments in the polyline.
+        num_points (int): The number of points in the polyline.
 
     Returns:
         torch.LongTensor: The edges of the polyline.
     """
-    ar = torch.arange(num_segs, device=device)
+    ar = torch.arange(num_points, device=device)
     return torch.stack([ar[:-1], ar[1:]], dim=1)
