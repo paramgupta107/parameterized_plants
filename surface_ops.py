@@ -143,6 +143,100 @@ def sample_linear_bezier_curve_points(control_points: torch.Tensor, num_points: 
     points = T.matmul(B).matmul(control_points)
     return points
 
+def sample_cubic_bspline_curve_points(control_points: torch.Tensor, num_points_per_seg: int, device: str = 'cuda') -> torch.Tensor:
+    """
+    Sample points from a cubic B-spline curve defined by the given control points.
+
+    Args:
+        control_points (torch.Tensor): The control points of the B-spline curve of shape (..., n, 3). n >= 4.
+        num_points_per_seg (int): The number of points to sample per segment.
+        device (str, optional): The device to use for computation. Defaults to 'cuda'.
+    Returns:
+        torch.Tensor: The sampled points from the B-spline curve of shape (..., (n-3)*num_points_per_seg, 3).
+    """
+    control_points = control_points.to(device)
+    B = torch.tensor([
+        [-1.0, 3.0, -3.0, 1.0],
+        [3.0, -6.0, 3.0, 0.0],
+        [-3.0, 0.0, 3.0, 0.0],
+        [1.0, 4.0, 1.0, 0.0]
+    ]).to(device)/6
+    t = torch.linspace(0.0, 1.0, num_points_per_seg).to(device)
+    T = torch.stack([t**3, t**2, t, torch.ones_like(t)], dim=1) # (num_points_per_seg, 4)
+    cp = control_points.unfold(-2, 4, 1).transpose(-2, -1) # (..., num_segments, 4, 3)
+    points = T.matmul(B).matmul(cp).reshape(control_points.shape[:-2] + (-1, 3)) # (..., num_segments*num_points_per_seg, 3)
+    return points
+
+def sample_quadratic_bspline_curve_points(control_points: torch.Tensor, num_points_per_seg: int, device: str = 'cuda') -> torch.Tensor:
+    """
+    Sample points from a quadratic B-spline curve defined by the given control points.
+
+    Args:
+        control_points (torch.Tensor): The control points of the B-spline curve of shape (..., n, 3). n >= 3.
+        num_points_per_seg (int): The number of points to sample per segment.
+        device (str, optional): The device to use for computation. Defaults to 'cuda'.
+    Returns:
+        torch.Tensor: The sampled points from the B-spline curve of shape (..., (n-2)*num_points_per_seg, 3).
+    """
+    control_points = control_points.to(device)
+    B = torch.tensor([
+        [1.0, -2.0, 1.0],
+        [-2.0, 2.0, 0.0], 
+        [1.0, 1.0, 0.0]
+    ]).to(device)/2
+    t = torch.linspace(0.0, 1.0, num_points_per_seg).to(device)
+    T = torch.stack([t**2, t, torch.ones_like(t)], dim=1) # (num_points_per_seg, 3)
+    cp = control_points.unfold(-2, 3, 1).transpose(-2, -1) # (..., num_segments, 3, 3)
+    points = T.matmul(B).matmul(cp).reshape(control_points.shape[:-2] + (-1, 3)) # (..., num_segments*num_points_per_seg, 3)
+    return points
+
+def sample_linear_bspline_curve_points(control_points: torch.Tensor, num_points_per_seg: int, device: str = 'cuda') -> torch.Tensor:
+    """
+    Sample points from a linear B-spline curve defined by the given control points.
+
+    Args:
+        control_points (torch.Tensor): The control points of the B-spline curve of shape (..., n, 3). n >= 2.
+        num_points_per_seg (int): The number of points to sample per segment.
+        device (str, optional): The device to use for computation. Defaults to 'cuda'.
+    Returns:
+        torch.Tensor: The sampled points from the B-spline curve of shape (..., (n-1)*num_points_per_seg, 3).
+    """
+    control_points = control_points.to(device)
+    B = torch.tensor([
+        [-1.0, 1.0],
+        [1.0, 0.0]
+    ]).to(device)
+    t = torch.linspace(0.0, 1.0, num_points_per_seg).to(device)
+    T = torch.stack([t, torch.ones_like(t)], dim=1) # (num_points_per_seg, 2)
+    cp = control_points.unfold(-2, 2, 1).transpose(-2, -1) # (..., num_segments, 2, 3)
+    points = T.matmul(B).matmul(cp).reshape(control_points.shape[:-2] + (-1, 3)) # (..., num_segments*num_points_per_seg, 3)
+    return points
+
+def sample_cubic_bspline_loop_curve_points(control_points: torch.Tensor, num_points_per_seg: int, device: str = 'cuda') -> torch.Tensor:
+    """
+    Sample points from a cubic B-spline loop curve defined by the given control points.
+
+    Args:
+        control_points (torch.Tensor): The control points of the B-spline curve of shape (..., n, 3). n >= 4.
+        num_points_per_seg (int): The number of points to sample per segment.
+        device (str, optional): The device to use for computation. Defaults to 'cuda'.
+    Returns:
+        torch.Tensor: The sampled points from the B-spline curve of shape (..., n*num_points_per_seg, 3).
+    """
+    control_points = control_points.to(device)
+    B = torch.tensor([
+        [-1.0, 3.0, -3.0, 1.0],
+        [3.0, -6.0, 3.0, 0.0],
+        [-3.0, 0.0, 3.0, 0.0],
+        [1.0, 4.0, 1.0, 0.0]
+    ]).to(device)/6
+    t = torch.linspace(0.0, 1.0, num_points_per_seg).to(device)
+    T = torch.stack([t**3, t**2, t, torch.ones_like(t)], dim=1) # (num_points_per_seg, 4)
+    wrapped_control_points =  torch.cat((control_points, control_points[..., :3, :]), dim=-2)
+    cp = wrapped_control_points.unfold(-2, 4, 1).transpose(-2, -1) # (..., n, 4, 3)
+    points = T.matmul(B).matmul(cp).reshape(control_points.shape[:-2] + (-1, 3)) # (..., n*num_points_per_seg, 3)
+    return points
+
 def cylinderical_cubic_spline_vertices(control_points: torch.Tensor, thickness: torch.Tensor, num_segs: int, points_per_circle: int, device: str = 'cuda'):
     """
     Create a cylinrical cubic spline from the given control points and thickness.
@@ -428,3 +522,15 @@ def cubic_bezier_surface_faces(num_segs_per_dim: int, traingulated: bool = True,
     f = torch.arange(num_segs_per_dim-1, device=device).view(-1, 1, 1)
     faces = (seg + f * num_segs_per_dim).view(-1, 3 if traingulated else 4)
     return faces
+
+if __name__ == '__main__':
+    bspline_control_points = torch.Tensor([[-1,1,0], [1,1,0], [1,-1,0], [-1,-1,0]])
+    points = sample_cubic_bspline_loop_curve_points(bspline_control_points, 5)
+    print("points", points.shape)
+    diff = bspline_control_points[1:] - bspline_control_points[:-1]
+    print("diff", diff.shape)
+    tangents = sample_quadratic_bspline_curve_points(diff, 100)
+    print("tangents", tangents.shape)
+    from mesh_ops import polylines_edges, save_mesh
+    edges = polylines_edges(points.shape[0])
+    save_mesh(points, edges, "out/test_bspline.obj")

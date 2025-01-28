@@ -22,6 +22,10 @@ from surface_ops import subdivide_c0_quadratic_control_points
 from surface_ops import cubic_bezier_curve_curvature
 from surface_ops import parallel_curves_surface_faces
 from surface_ops import cubic_bezier_surface_faces
+from surface_ops import sample_cubic_bspline_curve_points
+from surface_ops import sample_quadratic_bspline_curve_points
+from surface_ops import sample_linear_bspline_curve_points
+from surface_ops import sample_cubic_bspline_loop_curve_points
 class SaveMeshTests(unittest.TestCase):
     def test_save_mesh(self):
         # Define test input
@@ -404,5 +408,33 @@ class TestCubicBezierSurfaceFaces(unittest.TestCase):
         [10, 15, 11]])
         self.assertTrue(torch.allclose(faces, expected))
         self.assertEqual(faces.shape, expected.shape)
+class SampleCubicBsplineCurvePoints(unittest.TestCase):
+    def test_sample_cubic_bspline_curve_points(self):
+        control_points = torch.zeros(2, 4, 18, 3)
+        num_points = 10
+        points = sample_cubic_bspline_curve_points(control_points, num_points, device='cpu')
+        self.assertEqual(points.shape, (2, 4, (18-3)*10, 3))
+
+class SampleQuadraticBsplineCurvePoints(unittest.TestCase):
+    def test_sample_quadratic_bspline_curve_points(self):
+        control_points = torch.zeros(2, 3, 18, 3)
+        num_points = 10
+        points = sample_quadratic_bspline_curve_points(control_points, num_points, device='cpu')
+        self.assertEqual(points.shape, (2, 3, (18-2)*10, 3))
+
+class SampleLinearBsplineCurvePoints(unittest.TestCase):
+    def test_sample_linear_bspline_curve_points(self):
+        control_points = torch.zeros(2, 3, 18, 3)
+        num_points = 10
+        points = sample_linear_bspline_curve_points(control_points, num_points, device='cpu')
+        self.assertEqual(points.shape, (2, 3, (18-1)*10, 3))
+
+class SampleCubicBsplineLoopCurvePoints(unittest.TestCase):
+    def test_sample_cubic_bspline_loop_curve_points(self):
+        control_points = torch.zeros(2, 4, 18, 3)
+        num_points = 10
+        points = sample_cubic_bspline_loop_curve_points(control_points, num_points, device='cpu')
+        self.assertEqual(points.shape, (2, 4, 18*10, 3))
+
 if __name__ == '__main__':
     unittest.main()
